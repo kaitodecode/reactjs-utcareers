@@ -476,17 +476,6 @@ export default function JobPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {/* <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                            {job.company.logo ? (
-                              <img 
-                                src={job.company.logo} 
-                                alt={job.company.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <FaBuilding className="text-gray-500 text-sm" />
-                            )}
-                          </div> */}
                           <div>
                             <div className="font-medium text-gray-800">{job.company.name}</div>
                             <div className="text-sm text-gray-600">{job.company.location}</div>
