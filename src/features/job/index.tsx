@@ -15,6 +15,27 @@ interface Company {
   updatedAt: string;
 }
 
+interface JobPostCategoryDto {
+  jobCategoryId: string;
+  type: string;
+  requiredCount: number;
+  description: string;
+  requirements: string;
+  benefits: string;
+}
+
+interface JobPostCategory {
+  id: string;
+  jobCategory: JobCategory;
+  type: string;
+  requiredCount: number;
+  description: string | null;
+  requirements: string | null;
+  benefits: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface JobCategory {
   id: string;
   name: string;
@@ -31,7 +52,7 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   company: Company;
-  jobCategories: JobCategory[];
+  jobCategories: JobPostCategory[];
 }
 
 interface ApiResponse {
@@ -89,11 +110,12 @@ export default function JobPage() {
     title: '',
     companyId: '',
     status: 'active' as 'active' | 'closed',
-    selectedJobCategories: [] as string[],
+    jobPostCategories: [] as JobPostCategoryDto[],
     thumbnail: null as File | null
   });
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
@@ -167,7 +189,7 @@ export default function JobPage() {
       title: '',
       companyId: '',
       status: 'active',
-      selectedJobCategories: [],
+      jobPostCategories: [],
       thumbnail: null
     });
     setThumbnailPreview(null);
@@ -192,18 +214,52 @@ export default function JobPage() {
     setShowDetailModal(true);
   };
 
-  const handleEdit = (job: Job) => {
-    setModalMode('edit');
-    setFormData({
-      title: job.title,
-      companyId: job.companyId,
-      status: job.status,
-      selectedJobCategories: job.jobCategories.map(cat => cat.id),
-      thumbnail: null
-    });
-    setThumbnailPreview(job.thumbnail);
-    setEditingId(job.id);
-    setShowModal(true);
+  const handleEdit = async (job: Job) => {
+    try {
+      setModalMode('edit');
+      
+      // Fetch detailed job data including job categories
+      const response = await api.get(`/JobPosts/${job.id}`);
+      const detailedJob = response.data.data;
+      
+      setFormData({
+        title: detailedJob.title,
+        companyId: detailedJob.companyId,
+        status: detailedJob.status,
+        jobPostCategories: detailedJob.jobCategories ? detailedJob.jobCategories.map((cat: JobPostCategory) => ({
+          jobCategoryId: cat.jobCategory.id,
+          type: cat.type || 'Full Time',
+          requiredCount: cat.requiredCount || 1,
+          description: cat.description || '',
+          requirements: cat.requirements || '',
+          benefits: cat.benefits || ''
+        })) : [],
+        thumbnail: null
+      });
+      setThumbnailPreview(detailedJob.thumbnail);
+      setEditingId(job.id);
+      setShowModal(true);
+    } catch (error) {
+      console.error('Error loading job details:', error);
+      // Fallback to basic data if API call fails
+      setFormData({
+        title: job.title,
+        companyId: job.companyId,
+        status: job.status,
+        jobPostCategories: job.jobCategories.map((cat) => ({
+          jobCategoryId: cat.jobCategory.id,
+          type: cat.type || 'Full Time',
+          requiredCount: cat.requiredCount || 1,
+          description: cat.description || '',
+          requirements: cat.requirements || '',
+          benefits: cat.benefits || ''
+        })),
+        thumbnail: null
+      });
+      setThumbnailPreview(job.thumbnail);
+      setEditingId(job.id);
+      setShowModal(true);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -217,25 +273,41 @@ export default function JobPage() {
     }
   };
 
-  const handleJobCategoryToggle = (categoryId: string) => {
-    const updatedCategories = formData.selectedJobCategories.includes(categoryId)
-      ? formData.selectedJobCategories.filter(id => id !== categoryId)
-      : [...formData.selectedJobCategories, categoryId];
-    
-    setFormData({ ...formData, selectedJobCategories: updatedCategories });
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate at least one job category
+    if (formData.jobPostCategories.length === 0) {
+      alert('Minimal satu kategori job harus ditambahkan!');
+      return;
+    }
+    
+    // Validate all job categories have required fields
+    const hasIncompleteCategories = formData.jobPostCategories.some(
+      category => !category.jobCategoryId || !category.type
+    );
+    
+    if (hasIncompleteCategories) {
+      alert('Semua kategori job harus memiliki kategori dan tipe yang dipilih!');
+      return;
+    }
+    
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
       formDataToSend.append('companyId', formData.companyId);
       formDataToSend.append('status', formData.status);
       
-      // Add job categories
-      formData.selectedJobCategories.forEach((categoryId, index) => {
-        formDataToSend.append(`jobCategoryIds[${index}]`, categoryId);
+      // Add job categories with detailed information
+      formData.jobPostCategories.forEach((category, index) => {
+        formDataToSend.append(`JobCategories[${index}].jobCategoryId`, category.jobCategoryId);
+        formDataToSend.append(`JobCategories[${index}].type`, category.type);
+        formDataToSend.append(`JobCategories[${index}].requiredCount`, category.requiredCount.toString());
+        formDataToSend.append(`JobCategories[${index}].description`, category.description);
+        formDataToSend.append(`JobCategories[${index}].requirements`, category.requirements);
+        formDataToSend.append(`JobCategories[${index}].benefits`, category.benefits);
       });
       
       if (formData.thumbnail) {
@@ -258,8 +330,18 @@ export default function JobPage() {
       
       loadJobs();
       setShowModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving job:', error);
+      if (error.response) {
+        console.error('Server response:', error.response.data);
+        alert(`Gagal menyimpan job: ${error.response.data.message || error.response.statusText}`);
+      } else if (error.request) {
+        console.error('Request error:', error.request);
+        alert('Gagal terhubung ke server. Silakan coba lagi.');
+      } else {
+        console.error('Error:', error.message);
+        alert('Terjadi kesalahan: ' + error.message);
+      }
     }
   };
 
@@ -394,7 +476,7 @@ export default function JobPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                          {/* <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
                             {job.company.logo ? (
                               <img 
                                 src={job.company.logo} 
@@ -404,7 +486,7 @@ export default function JobPage() {
                             ) : (
                               <FaBuilding className="text-gray-500 text-sm" />
                             )}
-                          </div>
+                          </div> */}
                           <div>
                             <div className="font-medium text-gray-800">{job.company.name}</div>
                             <div className="text-sm text-gray-600">{job.company.location}</div>
@@ -419,7 +501,7 @@ export default function JobPage() {
                               className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                             >
                               <FaTag className="mr-1 text-xs" />
-                              {category.name}
+                              {category.jobCategory.name}
                             </span>
                           ))}
                           {job.jobCategories.length > 2 && (
@@ -617,7 +699,7 @@ export default function JobPage() {
                       className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
                     >
                       <FaTag className="mr-2 text-xs" />
-                      {category.name}
+                      {category.jobCategory.name}
                     </span>
                   ))}
                 </div>
@@ -731,31 +813,161 @@ export default function JobPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kategori Job *
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-40 overflow-y-auto p-3 bg-white/30 rounded-xl">
-                  {jobCategories.map((category) => (
-                    <label key={category.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.selectedJobCategories.includes(category.id)}
-                        onChange={() => handleJobCategoryToggle(category.id)}
-                        className="rounded border-gray-300 text-[#ffd401] focus:ring-[#ffd401]"
-                      />
-                      <span className="text-sm text-gray-700">{category.name}</span>
-                    </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kategori Job</label>
+                <div className="space-y-4">
+                  {formData.jobPostCategories.map((category, index) => (
+                    <div key={index} className="bg-white/30 backdrop-blur-sm border border-white/20 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-gray-800">Kategori {index + 1}</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...formData.jobPostCategories];
+                            updated.splice(index, 1);
+                            setFormData({ ...formData, jobPostCategories: updated });
+                          }}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          <FaTrash className="text-sm" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                          <select
+                            value={category.jobCategoryId}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].jobCategoryId = e.target.value;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                          >
+                            <option value="">Pilih Kategori</option>
+                            {jobCategories.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Posisi</label>
+                          <select
+                            value={category.type}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].type = e.target.value;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                          >
+                            <option disabled selected value={""}>Choose Type</option>
+                            <option value="full_time">Full Time</option>
+                            <option value="part_time">Part Time</option>
+                            <option value="contract">Contract</option>
+                            <option value="remote">Remote</option>
+
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah Dibutuhkan</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={category.requiredCount}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].requiredCount = parseInt(e.target.value) || 1;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                          <textarea
+                            value={category.description}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].description = e.target.value;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            rows={3}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                            placeholder="Deskripsi pekerjaan..."
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Persyaratan</label>
+                          <textarea
+                            value={category.requirements}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].requirements = e.target.value;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            rows={3}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                            placeholder="Persyaratan pekerjaan..."
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Benefit</label>
+                          <textarea
+                            value={category.benefits}
+                            onChange={(e) => {
+                              const updated = [...formData.jobPostCategories];
+                              updated[index].benefits = e.target.value;
+                              setFormData({ ...formData, jobPostCategories: updated });
+                            }}
+                            rows={3}
+                            className="w-full p-2 border border-gray-300 rounded focus:ring-[#ffd401] focus:border-[#ffd401]"
+                            placeholder="Benefit yang ditawarkan..."
+                          />
+                        </div>
+                      </div>
+                    </div>
                   ))}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        jobPostCategories: [
+                          ...formData.jobPostCategories,
+                          {
+                            jobCategoryId: '',
+                            type: 'Full Time',
+                            requiredCount: 1,
+                            description: '',
+                            requirements: '',
+                            benefits: ''
+                          }
+                        ]
+                      });
+                    }}
+                    className="w-full p-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-[#ffd401] hover:text-[#ffd401] transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    <FaPlus /> Tambah Kategori Job
+                  </button>
+
+                  {formData.jobPostCategories.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center">Tambahkan minimal satu kategori job</p>
+                  )}
                 </div>
-                {formData.selectedJobCategories.length === 0 && (
-                  <p className="text-sm text-red-500 mt-1">Pilih minimal satu kategori</p>
-                )}
               </div>
 
               <div className="flex gap-4 pt-4">
                 <button
                   type="submit"
-                  disabled={formData.selectedJobCategories.length === 0}
+                  disabled={!formData.title || !formData.companyId || formData.jobPostCategories.length === 0 || formData.jobPostCategories.some(cat => !cat.jobCategoryId || !cat.type)}
                   className="flex-1 bg-gradient-to-r from-[#ffd401] to-yellow-500 hover:from-yellow-500 hover:to-[#ffd401] text-black font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {modalMode === 'create' ? 'Buat Job' : 'Perbarui Job'}

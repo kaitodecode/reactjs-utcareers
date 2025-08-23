@@ -346,7 +346,7 @@ export default function DevisionPage() {
       {/* Detail Modal */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+          <div className="bg-white backdrop-blur-xl border border-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Detail Divisi</h2>
               <button
@@ -399,7 +399,7 @@ export default function DevisionPage() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-8 w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+          <div className="bg-white backdrop-blur-xl border border-white rounded-2xl p-8 w-full max-w-md shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
                 {modalMode === 'create' ? 'Tambah Divisi' : 'Edit Divisi'}

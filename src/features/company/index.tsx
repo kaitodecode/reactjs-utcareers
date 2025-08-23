@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaBuilding, FaPlus, FaEdit, FaTrash, FaEye, FaGlobe, FaPhone, FaEnvelope, FaMapMarkerAlt, FaSearch, FaFilter, FaImage, FaUpload } from 'react-icons/fa';
 import { api } from '../../lib/axios/api';
-
+import Swal from "sweetalert2"
 interface Company {
   id: string;
   name: string;
@@ -155,8 +155,19 @@ export default function CompanyPage() {
     setShowModal(true);
   };
 
+
   const handleDelete = async (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus perusahaan ini?')) {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6', 
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
       try {
         await api.delete(`/Companies/${id}`);
         loadCompanies(); // Reload data
@@ -324,7 +335,9 @@ export default function CompanyPage() {
                         {company.logo ? (
                           <img
                             src={company.logo}
-                            alt={company.name}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150'
+                            }}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                         ) : (
@@ -434,7 +447,7 @@ export default function CompanyPage() {
       {/* Detail Modal */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+          <div className="bg-white backdrop-blur-xl border border-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Detail Perusahaan</h2>
               <button
@@ -535,7 +548,7 @@ export default function CompanyPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+          <div className="bg-white backdrop-blur-xl border border-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
                 {modalMode === 'create' ? 'Add New Company' : 'Edit Company'}
@@ -556,7 +569,7 @@ export default function CompanyPage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                     required
                   />
                 </div>
@@ -567,7 +580,7 @@ export default function CompanyPage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                     required
                   />
                 </div>
@@ -578,7 +591,7 @@ export default function CompanyPage() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                     required
                   />
                 </div>
@@ -589,7 +602,7 @@ export default function CompanyPage() {
                     type="url"
                     value={formData.website}
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                   />
                 </div>
 
@@ -600,7 +613,7 @@ export default function CompanyPage() {
                       type="file"
                       accept="image/*"
                       onChange={handleLogoChange}
-                      className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                      className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                     />
                     {logoPreview && (
                       <div className="flex items-center gap-3">
@@ -617,7 +630,7 @@ export default function CompanyPage() {
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
+                    className="w-full px-4 py-3 bg-white/50 border border-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300"
                     required
                   />
                 </div>
@@ -629,7 +642,7 @@ export default function CompanyPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={4}
-                  className="w-full px-4 py-3 bg-white/50 border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300 resize-none"
+                  className="w-full px-4 py-3 bg-white/50 border border-slate-400  rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffd401] focus:border-transparent transition-all duration-300 resize-none"
                   required
                 />
               </div>

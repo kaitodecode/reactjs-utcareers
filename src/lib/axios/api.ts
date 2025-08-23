@@ -16,7 +16,6 @@ api.interceptors.request.use(
   },
   (error) => {
     setTimeout(() => {
-      // toast.dismiss()
     }, 500)
     return Promise.reject(error)
   }
@@ -24,8 +23,12 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
+    if(response.data.message && response.config.method !== 'get'){
+      toast.success(response.data.message)
+    }
     return response
   },
+
   (error) => {
     const errorStatus = error.response?.status
     const errorMessages = {
